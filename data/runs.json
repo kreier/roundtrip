@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "station_id": "station-kreier",
+  "runs": [
+    {
+      "round_id": "RT-2026-09-14-314",
+      "status": "COMPLETED",
+      "initiator": {
+        "station_id": "kreier-station-0",
+        "repo": "kreier/roundtrip",
+        "scheduled_time_utc": "2026-09-14T03:14:00.000Z",
+        "actual_start_utc": "2026-09-14T03:14:38.250Z",
+        "cron_jitter_ms": 38250
+      },
+      "summary": {
+        "total_roundtrip_ms": 142100,
+        "stations_count": 2,
+        "round_completed_at_utc": "2026-09-14T03:17:00.350Z"
+      },
+      "stations": [
+        {
+          "sequence": 0,
+          "station_id": "kreier-station-0",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-09-14T03:14:38.250Z",
+          "workflow_started_at_utc": "2026-09-14T03:14:41.100Z",
+          "deploy_completed_at_utc": "2026-09-14T03:15:22.400Z",
+          "dispatched_next_at_utc": "2026-09-14T03:15:25.100Z",
+          "metrics": {
+            "queue_delay_ms": 2850,
+            "execution_ms": 41300,
+            "dispatch_out_ms": 2700
+          }
+        },
+        {
+          "sequence": 1,
+          "station_id": "offspring-station-1",
+          "repo": "offspring26/roundtrip",
+          "received_at_utc": "2026-09-14T03:15:27.200Z",
+          "workflow_started_at_utc": "2026-09-14T03:15:30.800Z",
+          "deploy_completed_at_utc": "2026-09-14T03:16:15.500Z",
+          "dispatched_next_at_utc": "2026-09-14T03:16:18.200Z",
+          "metrics": {
+            "queue_delay_ms": 3600,
+            "execution_ms": 44700,
+            "dispatch_out_ms": 2700
+          }
+        }
+      ]
+    },
+    {
+      "round_id": "RT-2026-10-05-314",
+      "status": "COMPLETED",
+      "initiator": {
+        "station_id": "station-kreier",
+        "repo": "kreier/roundtrip",
+        "scheduled_time_utc": "2026-10-05T17:38:00.000Z",
+        "actual_start_utc": "2026-10-05T17:38:07.864Z",
+        "cron_jitter_ms": 7864
+      },
+      "summary": {
+        "total_roundtrip_ms": 754136,
+        "stations_count": 19,
+        "round_completed_at_utc": "2026-10-05T17:50:42.000Z"
+      },
+      "stations": [
+        {
+          "sequence": 0,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:38:07.864Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 1,
+          "station_id": "station-aikenf",
+          "repo": "aikenf/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:38:45.332Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 2,
+          "station_id": "station-flynn0",
+          "repo": "flynn0/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:39:27.351Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 3,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-10-05T17:39:27.351Z",
+          "workflow_started_at_utc": "2026-10-05T17:39:36.000Z",
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": null,
+          "metrics": {
+            "queue_delay_ms": 8649,
+            "execution_ms": 0,
+            "dispatch_out_ms": 0
+          }
+        },
+        {
+          "sequence": 4,
+          "station_id": "station-aikenf",
+          "repo": "aikenf/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:40:32.841Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 5,
+          "station_id": "station-flynn0",
+          "repo": "flynn0/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:41:07.565Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 6,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-10-05T17:41:07.565Z",
+          "workflow_started_at_utc": "2026-10-05T17:41:16.000Z",
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": null,
+          "metrics": {
+            "queue_delay_ms": 8435,
+            "execution_ms": 0,
+            "dispatch_out_ms": 0
+          }
+        },
+        {
+          "sequence": 7,
+          "station_id": "station-aikenf",
+          "repo": "aikenf/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:42:41.702Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 8,
+          "station_id": "station-flynn0",
+          "repo": "flynn0/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:43:17.972Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 9,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-10-05T17:43:17.972Z",
+          "workflow_started_at_utc": "2026-10-05T17:43:29.000Z",
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": null,
+          "metrics": {
+            "queue_delay_ms": 11028,
+            "execution_ms": 0,
+            "dispatch_out_ms": 0
+          }
+        },
+        {
+          "sequence": 10,
+          "station_id": "station-aikenf",
+          "repo": "aikenf/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:45:00.306Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 11,
+          "station_id": "station-flynn0",
+          "repo": "flynn0/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:45:48.545Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 12,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-10-05T17:45:48.545Z",
+          "workflow_started_at_utc": "2026-10-05T17:45:58.000Z",
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": null,
+          "metrics": {
+            "queue_delay_ms": 9455,
+            "execution_ms": 0,
+            "dispatch_out_ms": 0
+          }
+        },
+        {
+          "sequence": 13,
+          "station_id": "station-aikenf",
+          "repo": "aikenf/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:47:17.457Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 14,
+          "station_id": "station-flynn0",
+          "repo": "flynn0/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:48:17.314Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 15,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-10-05T17:48:17.314Z",
+          "workflow_started_at_utc": "2026-10-05T17:48:27.000Z",
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": null,
+          "metrics": {
+            "queue_delay_ms": 9686,
+            "execution_ms": 0,
+            "dispatch_out_ms": 0
+          }
+        },
+        {
+          "sequence": 16,
+          "station_id": "station-aikenf",
+          "repo": "aikenf/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:49:30.159Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 17,
+          "station_id": "station-flynn0",
+          "repo": "flynn0/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-05T17:50:33.535Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 18,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-10-05T17:50:33.535Z",
+          "workflow_started_at_utc": "2026-10-05T17:50:42.000Z",
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": null,
+          "metrics": {
+            "queue_delay_ms": 8465,
+            "execution_ms": 0,
+            "dispatch_out_ms": 0
+          }
+        }
+      ]
+    }
+  ]
+}
