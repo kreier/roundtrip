@@ -309,7 +309,7 @@
     },
     {
       "round_id": "RT-2026-10-06-314",
-      "status": "IN_PROGRESS",
+      "status": "COMPLETED",
       "initiator": {
         "station_id": "station-kreier",
         "repo": "kreier/roundtrip",
@@ -318,9 +318,9 @@
         "cron_jitter_ms": -7347000
       },
       "summary": {
-        "total_roundtrip_ms": null,
-        "stations_count": 1,
-        "round_completed_at_utc": null
+        "total_roundtrip_ms": 113193,
+        "stations_count": 4,
+        "round_completed_at_utc": "2026-10-06T01:13:26.193Z"
       },
       "stations": [
         {
@@ -329,6 +329,44 @@
           "repo": "kreier/roundtrip",
           "received_at_utc": "2026-10-06T01:11:33.000Z",
           "workflow_started_at_utc": "2026-10-06T01:11:33.000Z",
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": null,
+          "metrics": {
+            "queue_delay_ms": 0,
+            "execution_ms": 0,
+            "dispatch_out_ms": 0
+          }
+        },
+        {
+          "sequence": 1,
+          "station_id": "station-aikenf",
+          "repo": "aikenf/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-06T01:12:34.778Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 2,
+          "station_id": "station-flynn0",
+          "repo": "flynn0/roundtrip",
+          "received_at_utc": null,
+          "workflow_started_at_utc": null,
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": "2026-10-06T01:13:16.209Z",
+          "metrics": {
+            "execution_ms": 0
+          }
+        },
+        {
+          "sequence": 3,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-10-06T01:13:23.000Z",
+          "workflow_started_at_utc": "2026-10-06T01:13:23.000Z",
           "deploy_completed_at_utc": null,
           "dispatched_next_at_utc": null,
           "metrics": {
