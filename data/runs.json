@@ -306,6 +306,38 @@
           }
         }
       ]
+    },
+    {
+      "round_id": "RT-2026-10-06-314",
+      "status": "IN_PROGRESS",
+      "initiator": {
+        "station_id": "station-kreier",
+        "repo": "kreier/roundtrip",
+        "scheduled_time_utc": "2026-10-06T03:14:00.000Z",
+        "actual_start_utc": "2026-10-06T01:11:33.000Z",
+        "cron_jitter_ms": -7347000
+      },
+      "summary": {
+        "total_roundtrip_ms": null,
+        "stations_count": 1,
+        "round_completed_at_utc": null
+      },
+      "stations": [
+        {
+          "sequence": 0,
+          "station_id": "station-kreier",
+          "repo": "kreier/roundtrip",
+          "received_at_utc": "2026-10-06T01:11:33.000Z",
+          "workflow_started_at_utc": "2026-10-06T01:11:33.000Z",
+          "deploy_completed_at_utc": null,
+          "dispatched_next_at_utc": null,
+          "metrics": {
+            "queue_delay_ms": 0,
+            "execution_ms": 0,
+            "dispatch_out_ms": 0
+          }
+        }
+      ]
     }
   ]
 }
