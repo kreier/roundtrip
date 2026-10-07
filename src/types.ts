@@ -19,6 +19,7 @@ export interface StationStep {
 export interface BenchmarkInitiator {
   station_id: string;
   repo: string;
+  trigger_type?: 'CRON' | 'MANUAL' | 'TEST' | string | null;
   scheduled_time_utc?: string | null;
   actual_start_utc?: string | null;
   cron_jitter_ms?: number | null;
@@ -32,6 +33,7 @@ export interface BenchmarkSummary {
 
 export interface BenchmarkRun {
   round_id: string;
+  trigger_type?: 'CRON' | 'MANUAL' | 'TEST' | string | null;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED' | string;
   initiator: BenchmarkInitiator;
   summary: BenchmarkSummary;

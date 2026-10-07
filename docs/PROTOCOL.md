@@ -26,7 +26,7 @@ sequenceDiagram
     StationA->>GitHubAPI: POST /app/installations/{installation_id}/access_tokens
     GitHubAPI-->>StationA: Return { token: "ghs_..." } (valid 60m)
     StationA->>GitHubAPI: POST /repos/{target_owner}/{target_repo}/dispatches<br/>Event: "roundtrip_signal"<br/>Auth: Bearer ghs_...
-    GitHubAPI->>StationB: Trigger workflow: roundtrip-relay.yml
+    GitHubAPI->>StationB: Trigger workflow: roundtrip.yml
 ```
 
 ---
@@ -58,19 +58,20 @@ The `client_payload` object is passed into the triggered workflow via `${{ githu
 ```json
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "round_id": "RT-2026-10-03-314",
+  "round_id": "RT-CRON-2026-10-14_03:14",
   "initiator": {
     "station_id": "kreier-station-0",
     "repo": "kreier/roundtrip",
-    "scheduled_time_utc": "2026-10-03T03:14:00.000Z",
-    "actual_start_utc": "2026-10-03T03:14:42.185Z",
+    "trigger_type": "CRON",
+    "scheduled_time_utc": "2026-10-14T03:14:00.000Z",
+    "actual_start_utc": "2026-10-14T03:14:42.185Z",
     "cron_jitter_ms": 42185
   },
   "hop": {
     "sequence": 1,
     "dispatched_by_station": "kreier-station-0",
     "dispatched_by_repo": "kreier/roundtrip",
-    "dispatched_at_utc": "2026-10-03T03:15:30.410Z",
+    "dispatched_at_utc": "2026-10-14T03:15:30.410Z",
     "target_station_repo": "offspring26/roundtrip"
   },
   "trace": [

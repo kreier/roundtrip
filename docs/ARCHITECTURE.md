@@ -79,12 +79,12 @@ The station builds its Vite + React dashboard displaying interactive Gantt chart
 2. It requests an installation token for the downstream target repository.
 3. It posts a `repository_dispatch` event with payload schema to `https://api.github.com/repos/{next_station_repo}/dispatches`.
 
-### Phase 6: Loop Completion & Next Month Rescheduling (Station 0 Only)
-When Station 0 receives the returning dispatch:
-1. It validates that the round ID matches the active cycle and that the sequence count matches the total station count.
-2. It marks the round status as `COMPLETED` and seals total round duration metrics.
-3. It generates a pseudorandom integer $D \in [1, 30]$ for the next calendar month.
-4. It dynamically updates `.github/workflows/roundtrip-initiator.yml` with cron expression `14 3 <D> <M+1> *` and commits the schedule update.
+### Phase 6: Loop Completion & Next Month Rescheduling (Initiating Station)
+When the station that initiated the cycle receives the returning dispatch (`payload.initiator.repo == github.repository`):
+1. It validates that the round ID matches the active cycle and marks the round status as `COMPLETED`.
+2. It seals total round duration metrics and commits the final telemetry to its telemetry branch.
+3. If scheduled cron runs are enabled, it generates a pseudorandom integer $D \in [1, 30]$ for the next calendar month.
+4. It dynamically updates `.github/workflows/roundtrip.yml` with cron expression `14 3 <D> <M+1> *` and commits the schedule update.
 
 ---
 

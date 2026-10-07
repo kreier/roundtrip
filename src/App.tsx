@@ -4,8 +4,25 @@ import { TelemetryDatabase, BenchmarkRun } from './types';
 import { GanttChart } from './components/GanttChart';
 import { RingTopology } from './components/RingTopology';
 
+type CategoryFilter = 'ALL' | 'CRON' | 'MANUAL' | 'TEST';
+
 const STORAGE_KEY_HIDDEN = 'roundtrip_hidden_runs';
-const STORAGE_KEY_HIDE_TESTS = 'roundtrip_hide_tests';
+const STORAGE_KEY_CATEGORY = 'roundtrip_category_filter';
+
+export const getRunCategory = (run: BenchmarkRun): 'CRON' | 'MANUAL' | 'TEST' => {
+  if (run.trigger_type) {
+    const t = run.trigger_type.toUpperCase();
+    if (t === 'TEST' || t === 'MANUAL' || t === 'CRON') return t;
+  }
+  if (run.initiator?.trigger_type) {
+    const t = run.initiator.trigger_type.toUpperCase();
+    if (t === 'TEST' || t === 'MANUAL' || t === 'CRON') return t;
+  }
+  const idUpper = (run.round_id || '').toUpperCase();
+  if (idUpper.includes('TEST')) return 'TEST';
+  if (idUpper.includes('MANUAL')) return 'MANUAL';
+  return 'CRON';
+};
 
 export const App: React.FC = () => {
   const [db] = useState<TelemetryDatabase>(initialRunsData as unknown as TelemetryDatabase);
@@ -18,12 +35,16 @@ export const App: React.FC = () => {
     }
   });
 
-  const [hideTests, setHideTests] = useState<boolean>(() => {
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY_HIDE_TESTS) === 'true';
+      const saved = localStorage.getItem(STORAGE_KEY_CATEGORY);
+      if (saved && ['ALL', 'CRON', 'MANUAL', 'TEST'].includes(saved)) {
+        return saved as CategoryFilter;
+      }
     } catch {
-      return false;
+      // ignore
     }
+    return 'ALL';
   });
 
   const [selectedRoundIndex, setSelectedRoundIndex] = useState(0);
@@ -39,16 +60,16 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY_HIDE_TESTS, String(hideTests));
+      localStorage.setItem(STORAGE_KEY_CATEGORY, categoryFilter);
     } catch {
       // ignore
     }
-  }, [hideTests]);
+  }, [categoryFilter]);
 
   // Compute visible runs based on active filters
   const visibleRuns = (db.runs || []).filter((r) => {
     if (hiddenRunIds.includes(r.round_id)) return false;
-    if (hideTests && (r.round_id.toUpperCase().includes('TEST'))) {
+    if (categoryFilter !== 'ALL' && getRunCategory(r) !== categoryFilter) {
       return false;
     }
     return true;
@@ -61,6 +82,7 @@ export const App: React.FC = () => {
   const isLoopCompleted = activeRun?.status === 'COMPLETED';
   const jitterMs = activeRun?.initiator?.cron_jitter_ms || 0;
   const totalMs = activeRun?.summary?.total_roundtrip_ms;
+  const activeCategory = activeRun ? getRunCategory(activeRun) : 'CRON';
 
   const handleHideRun = (roundId: string) => {
     if (window.confirm(`Hide benchmark run '${roundId}' from your dashboard view?`)) {
@@ -71,7 +93,7 @@ export const App: React.FC = () => {
 
   const handleRestoreAll = () => {
     setHiddenRunIds([]);
-    setHideTests(false);
+    setCategoryFilter('ALL');
   };
 
   const handleDownloadCleanRuns = () => {
@@ -157,12 +179,31 @@ export const App: React.FC = () => {
             </div>
 
             <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg">
-              <div className="text-xs font-mono text-slate-400 uppercase tracking-wider">Cron Jitter (03:14 UTC)</div>
+              <div className="text-xs font-mono text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>
+                  {activeCategory === 'CRON'
+                    ? `Cron Jitter (${activeRun.initiator?.scheduled_time_utc ? new Date(activeRun.initiator.scheduled_time_utc).toISOString().slice(11, 16) : '03:14'} UTC)`
+                    : 'Runner Queue Wait'}
+                </span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded border uppercase font-bold ${
+                    activeCategory === 'CRON'
+                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                      : activeCategory === 'MANUAL'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                  }`}
+                >
+                  {activeCategory}
+                </span>
+              </div>
               <div className="text-xl font-bold font-mono text-amber-400 mt-2">
                 {jitterMs ? `+${(jitterMs / 1000).toFixed(2)}s` : '0.00s'}
               </div>
               <div className="text-xs text-slate-500 mt-1">
-                {jitterMs.toLocaleString()} ms runner startup delay
+                {activeCategory === 'CRON'
+                  ? `${jitterMs.toLocaleString()} ms scheduler delay`
+                  : `${jitterMs.toLocaleString()} ms runner startup latency`}
               </div>
             </div>
 
@@ -179,12 +220,12 @@ export const App: React.FC = () => {
         ) : (
           <div className="p-8 text-center text-slate-400 bg-slate-900 rounded-xl border border-slate-800 flex flex-col items-center gap-3">
             <div>No benchmark runs visible (some may be hidden or filtered).</div>
-            {(hiddenRunIds.length > 0 || hideTests) && (
+            {(hiddenRunIds.length > 0 || categoryFilter !== 'ALL') && (
               <button
                 onClick={handleRestoreAll}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-mono font-semibold transition-colors"
               >
-                Restore All Hidden Runs
+                Restore All Hidden Runs & Reset Filters
               </button>
             )}
           </div>
@@ -194,7 +235,7 @@ export const App: React.FC = () => {
         {activeRun && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
-              <GanttChart stations={activeRun.stations} cronJitterMs={jitterMs} />
+              <GanttChart stations={activeRun.stations} cronJitterMs={jitterMs} triggerType={activeCategory} />
             </div>
             <div>
               <RingTopology
@@ -212,24 +253,39 @@ export const App: React.FC = () => {
             <div>
               <h3 className="text-md font-semibold text-slate-200">Historical Benchmark Runs</h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Select a cycle to view telemetry, filter test runs, or download a clean database.
+                Select a cycle to view telemetry, filter by category, or download a clean database.
               </p>
             </div>
 
             {/* Run Management Toolbar */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Filter Test Runs Toggle */}
-              <button
-                onClick={() => setHideTests(!hideTests)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors flex items-center gap-1.5 ${
-                  hideTests
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-semibold'
-                    : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
-                }`}
-                title="Toggle visibility of test runs (RT-TEST-*)"
-              >
-                <span>🧪</span> {hideTests ? 'Hiding Test Runs' : 'Hide Test Runs'}
-              </button>
+              {/* Category Filter Pills */}
+              <div className="flex items-center bg-slate-950 p-1 rounded-lg border border-slate-800 text-xs font-mono">
+                {(['ALL', 'CRON', 'MANUAL', 'TEST'] as CategoryFilter[]).map((cat) => {
+                  const isActive = categoryFilter === cat;
+                  const label =
+                    cat === 'ALL'
+                      ? 'All'
+                      : cat === 'CRON'
+                      ? '⏰ Cron'
+                      : cat === 'MANUAL'
+                      ? '👤 Manual'
+                      : '🧪 Test';
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setCategoryFilter(cat)}
+                      className={`px-2.5 py-1 rounded text-xs transition-colors ${
+                        isActive
+                          ? 'bg-blue-600 text-white font-semibold'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Restore All Button */}
               {hiddenRunIds.length > 0 && (
@@ -258,7 +314,7 @@ export const App: React.FC = () => {
             <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-800/80">
               {visibleRuns.map((r, i) => {
                 const isSelected = i === safeIndex;
-                const isTest = r.round_id.toUpperCase().includes('TEST');
+                const cat = getRunCategory(r);
 
                 return (
                   <div
@@ -273,7 +329,17 @@ export const App: React.FC = () => {
                       onClick={() => setSelectedRoundIndex(i)}
                       className="px-3 py-1.5 flex items-center gap-1.5"
                     >
-                      {isTest && <span title="Test Run">🧪</span>}
+                      <span
+                        className={`text-[9px] px-1 py-0.2 rounded uppercase font-semibold ${
+                          cat === 'CRON'
+                            ? 'bg-purple-900/60 text-purple-300 border border-purple-700/60'
+                            : cat === 'MANUAL'
+                            ? 'bg-emerald-900/60 text-emerald-300 border border-emerald-700/60'
+                            : 'bg-amber-900/60 text-amber-300 border border-amber-700/60'
+                        }`}
+                      >
+                        {cat}
+                      </span>
                       <span>{r.round_id}</span>
                       <span className="text-[10px] opacity-75">({r.status})</span>
                     </button>

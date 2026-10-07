@@ -1,0 +1,314 @@
+name: Roundtrip Network Benchmark
+
+on:
+  schedule:
+    # Monthly cron schedule. Dynamically updated by scripts/calculate_schedule.py
+    - cron: '14 3 4 11 *'
+  workflow_dispatch:
+    inputs:
+      category:
+        description: 'Run Category'
+        required: true
+        default: 'MANUAL'
+        type: choice
+        options:
+          - 'MANUAL'
+          - 'TEST'
+      manual_round_id:
+        description: 'Custom Round ID (leave blank for automatic RT-<CATEGORY>-YYYY-MM-DD_HH:MM)'
+        required: false
+        type: string
+  repository_dispatch:
+    types: [roundtrip_signal]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: roundtrip-network-benchmark
+  cancel-in-progress: false
+
+jobs:
+  roundtrip:
+    runs-on: ubuntu-latest
+    # Evaluate cron switch: on forks, schedule is disabled unless CRON_ENABLED == 'true'
+    if: (github.event_name != 'schedule') || (vars.CRON_ENABLED == 'true' || (github.repository == 'kreier/roundtrip' && vars.CRON_ENABLED != 'false'))
+    steps:
+      - name: Record Initialization Timestamp
+        id: timestamps
+        run: |
+          NOW_UTC=$(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+          echo "started_at_utc=${NOW_UTC}" >> $GITHUB_OUTPUT
+          TODAY=$(date -u +"%Y-%m-%d")
+          echo "today=${TODAY}" >> $GITHUB_OUTPUT
+          HM=$(date -u +"%H:%M")
+          echo "time_hm=${HM}" >> $GITHUB_OUTPUT
+
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Restore Persistent Telemetry from telemetry branch
+        env:
+          TARGET_BRANCH: ${{ vars.TELEMETRY_BRANCH || (github.repository == 'kreier/roundtrip' && 'telemetry-origin' || 'telemetry') }}
+        run: |
+          if git fetch origin ${TARGET_BRANCH}:${TARGET_BRANCH} 2>/dev/null; then
+            echo "Restoring data/runs.json from ${TARGET_BRANCH} branch..."
+            git checkout ${TARGET_BRANCH} -- data/runs.json || echo "Could not checkout runs.json from ${TARGET_BRANCH} branch"
+          else
+            echo "No remote ${TARGET_BRANCH} branch found. Using repository default data/runs.json."
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Python Dependencies
+        run: |
+          pip install --quiet pyjwt cryptography
+
+      - name: Evaluate Run Mode
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo '${{ toJson(github.event.client_payload) }}' > /tmp/payload.json
+            INIT_REPO=$(jq -r '.initiator.repo // empty' /tmp/payload.json)
+            echo "init_repo=${INIT_REPO}" >> $GITHUB_OUTPUT
+            if [ "${INIT_REPO}" = "${{ github.repository }}" ]; then
+              echo "run_mode=LOOP_CLOSURE" >> $GITHUB_OUTPUT
+            else
+              echo "run_mode=INTERMEDIATE_RELAY" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "run_mode=INITIATOR_START" >> $GITHUB_OUTPUT
+          fi
+
+      # -------------------------------------------------------------
+      # Case 1: Loop Closure (Signal returned to whichever station initiated)
+      # -------------------------------------------------------------
+      - name: Handle Loop Closure & Seal Run
+        if: steps.mode.outputs.run_mode == 'LOOP_CLOSURE'
+        env:
+          STATION_ID: ${{ vars.STATION_ID || github.repository_owner }}
+          IS_SCHEDULED: ${{ vars.CRON_ENABLED == 'true' || (github.repository == 'kreier/roundtrip' && vars.CRON_ENABLED != 'false') }}
+        run: |
+          echo "Signal returned to initiator (${{ github.repository }})! Sealing loop..."
+          ROUND_ID=$(jq -r '.round_id' /tmp/payload.json)
+          SEQ=$(jq -r '.hop.sequence' /tmp/payload.json)
+
+          python3 scripts/record_metrics.py \
+            --round-id "${ROUND_ID}" \
+            --station-id "${STATION_ID}" \
+            --repo "${{ github.repository }}" \
+            --sequence "${SEQ}" \
+            --is-initiator \
+            --is-loop-closure \
+            --received-at "${{ steps.timestamps.outputs.started_at_utc }}" \
+            --workflow-started-at "${{ steps.timestamps.outputs.started_at_utc }}" \
+            --incoming-payload-file /tmp/payload.json
+
+          # If scheduled cron runs are enabled on this station, update next month's schedule
+          if [ "${IS_SCHEDULED}" = "true" ]; then
+            python3 scripts/calculate_schedule.py --update-workflow || echo "Schedule update skipped"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .github/workflows/roundtrip.yml
+            git commit -m "chore(roundtrip): reschedule next month [skip ci]" || echo "No schedule changes"
+            git push origin main || echo "Push to main skipped"
+          fi
+
+          # Push sealed telemetry database to dedicated telemetry branch
+          TARGET_BRANCH="${{ vars.TELEMETRY_BRANCH || (github.repository == 'kreier/roundtrip' && 'telemetry-origin' || 'telemetry') }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp data/runs.json /tmp/runs_sealed.json
+          git checkout ${TARGET_BRANCH} 2>/dev/null || git checkout --orphan ${TARGET_BRANCH}
+          git rm -rf . 2>/dev/null || true
+          mkdir -p data
+          cp /tmp/runs_sealed.json data/runs.json
+          git add data/runs.json
+          git commit -m "chore(telemetry): seal round ${ROUND_ID} [skip ci]" || echo "No changes"
+          git push origin ${TARGET_BRANCH} || echo "Push to ${TARGET_BRANCH} branch skipped"
+
+      # -------------------------------------------------------------
+      # Case 2: Intermediate Relay (Passing signal along the ring)
+      # -------------------------------------------------------------
+      - name: Parse Intermediate Relay Payload
+        if: steps.mode.outputs.run_mode == 'INTERMEDIATE_RELAY'
+        id: parse_relay
+        run: |
+          ROUND_ID=$(jq -r '.round_id' /tmp/payload.json)
+          SEQ=$(jq -r '.hop.sequence // 1' /tmp/payload.json)
+          DISPATCHED_AT=$(jq -r '.hop.dispatched_at_utc // empty' /tmp/payload.json)
+          DISPATCHED_BY=$(jq -r '.hop.dispatched_by_station // "unknown"' /tmp/payload.json)
+          INIT_REPO=$(jq -r '.initiator.repo // "kreier/roundtrip"' /tmp/payload.json)
+
+          echo "round_id=${ROUND_ID}" >> $GITHUB_OUTPUT
+          echo "sequence=${SEQ}" >> $GITHUB_OUTPUT
+          echo "dispatched_at_utc=${DISPATCHED_AT}" >> $GITHUB_OUTPUT
+          echo "dispatched_by=${DISPATCHED_BY}" >> $GITHUB_OUTPUT
+          echo "initiator_repo=${INIT_REPO}" >> $GITHUB_OUTPUT
+
+      - name: Reconstruct Prior Cycle (Relay)
+        if: steps.mode.outputs.run_mode == 'INTERMEDIATE_RELAY'
+        env:
+          NEXT_STATION_REPO: ${{ vars.NEXT_STATION_REPO || 'kreier/roundtrip' }}
+        run: |
+          python3 scripts/reconstruct_round.py \
+            --current-repo "${{ github.repository }}" \
+            --next-repo "${NEXT_STATION_REPO}" \
+            --initiator-repo "${{ steps.parse_relay.outputs.initiator_repo }}" \
+            --current-round-id "${{ steps.parse_relay.outputs.round_id }}" || true
+
+      - name: Record Relay Metrics
+        if: steps.mode.outputs.run_mode == 'INTERMEDIATE_RELAY'
+        env:
+          STATION_ID: ${{ vars.STATION_ID || github.repository_owner }}
+        run: |
+          python3 scripts/record_metrics.py \
+            --round-id "${{ steps.parse_relay.outputs.round_id }}" \
+            --station-id "${STATION_ID}" \
+            --repo "${{ github.repository }}" \
+            --sequence "${{ steps.parse_relay.outputs.sequence }}" \
+            --received-at "${{ steps.parse_relay.outputs.dispatched_at_utc }}" \
+            --workflow-started-at "${{ steps.timestamps.outputs.started_at_utc }}" \
+            --incoming-payload-file /tmp/payload.json
+
+      # -------------------------------------------------------------
+      # Case 3: Initiator Start (Starting a new round from this station)
+      # -------------------------------------------------------------
+      - name: Determine Initiator Metadata
+        if: steps.mode.outputs.run_mode == 'INITIATOR_START'
+        id: init_meta
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            CATEGORY="CRON"
+            ROUND_ID="RT-CRON-${{ steps.timestamps.outputs.today }}_03:14"
+            SCHED_TIME="${{ steps.timestamps.outputs.today }}T03:14:00.000Z"
+          else
+            CATEGORY="${{ inputs.category || 'MANUAL' }}"
+            if [ -n "${{ inputs.manual_round_id }}" ]; then
+              ROUND_ID="${{ inputs.manual_round_id }}"
+            else
+              ROUND_ID="RT-${CATEGORY}-${{ steps.timestamps.outputs.today }}_${{ steps.timestamps.outputs.time_hm }}"
+            fi
+            # For manual and test runs, intended start is trigger time (measured against startup)
+            SCHED_TIME="${{ steps.timestamps.outputs.started_at_utc }}"
+          fi
+
+          echo "category=${CATEGORY}" >> $GITHUB_OUTPUT
+          echo "round_id=${ROUND_ID}" >> $GITHUB_OUTPUT
+          echo "scheduled_time_utc=${SCHED_TIME}" >> $GITHUB_OUTPUT
+
+      - name: Reconstruct Prior Cycle (Initiator)
+        if: steps.mode.outputs.run_mode == 'INITIATOR_START'
+        env:
+          NEXT_STATION_REPO: ${{ vars.NEXT_STATION_REPO || 'offspring26/roundtrip' }}
+        run: |
+          python3 scripts/reconstruct_round.py \
+            --current-repo "${{ github.repository }}" \
+            --next-repo "${NEXT_STATION_REPO}" \
+            --initiator-repo "${{ github.repository }}" \
+            --current-round-id "${{ steps.init_meta.outputs.round_id }}" || true
+
+      - name: Record Initiator Metrics
+        if: steps.mode.outputs.run_mode == 'INITIATOR_START'
+        env:
+          STATION_ID: ${{ vars.STATION_ID || github.repository_owner }}
+        run: |
+          python3 scripts/record_metrics.py \
+            --round-id "${{ steps.init_meta.outputs.round_id }}" \
+            --station-id "${STATION_ID}" \
+            --repo "${{ github.repository }}" \
+            --sequence 0 \
+            --is-initiator \
+            --trigger-type "${{ steps.init_meta.outputs.category }}" \
+            --scheduled-time "${{ steps.init_meta.outputs.scheduled_time_utc }}" \
+            --received-at "${{ steps.timestamps.outputs.started_at_utc }}" \
+            --workflow-started-at "${{ steps.timestamps.outputs.started_at_utc }}"
+
+      # -------------------------------------------------------------
+      # Shared Steps for Hops in Progress (Relay and Initiator Start)
+      # -------------------------------------------------------------
+      - name: Setup Node & Build Dashboard
+        if: steps.mode.outputs.run_mode != 'LOOP_CLOSURE'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install npm dependencies & Build
+        if: steps.mode.outputs.run_mode != 'LOOP_CLOSURE'
+        run: |
+          npm ci || npm install
+          npm run build
+          mkdir -p dist/data
+          cp data/runs.json dist/data/runs.json
+
+      - name: Setup Pages
+        if: steps.mode.outputs.run_mode != 'LOOP_CLOSURE'
+        uses: actions/configure-pages@v6
+
+      - name: Upload GitHub Pages Artifact
+        if: steps.mode.outputs.run_mode != 'LOOP_CLOSURE'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        if: steps.mode.outputs.run_mode != 'LOOP_CLOSURE'
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Dispatch Next Station via GitHub App
+        if: steps.mode.outputs.run_mode != 'LOOP_CLOSURE'
+        env:
+          ROUNDTRIP_APP_ID: ${{ secrets.ROUNDTRIP_APP_ID }}
+          ROUNDTRIP_APP_PRIVATE_KEY: ${{ secrets.ROUNDTRIP_APP_PRIVATE_KEY }}
+          NEXT_STATION_REPO: ${{ vars.NEXT_STATION_REPO || (github.repository == 'kreier/roundtrip' && 'offspring26/roundtrip' || 'kreier/roundtrip') }}
+          STATION_ID: ${{ vars.STATION_ID || github.repository_owner }}
+        run: |
+          if [ "${{ steps.mode.outputs.run_mode }}" = "INITIATOR_START" ]; then
+            ACTIVE_ROUND_ID="${{ steps.init_meta.outputs.round_id }}"
+            NEXT_SEQ=1
+            PAYLOAD_ARG=""
+          else
+            ACTIVE_ROUND_ID="${{ steps.parse_relay.outputs.round_id }}"
+            NEXT_SEQ=$(( ${{ steps.parse_relay.outputs.sequence }} + 1 ))
+            PAYLOAD_ARG="--payload-file /tmp/payload.json"
+          fi
+
+          echo "Pages deployed successfully. Dispatching downstream station ${NEXT_STATION_REPO} (sequence: ${NEXT_SEQ})..."
+          python3 scripts/trigger_next.py \
+            --target-repo "${NEXT_STATION_REPO}" \
+            --round-id "${ACTIVE_ROUND_ID}" \
+            --sequence "${NEXT_SEQ}" \
+            --station-id "${STATION_ID}" \
+            --current-repo "${{ github.repository }}" \
+            ${PAYLOAD_ARG}
+
+      - name: Persist Telemetry to Dedicated Branch
+        if: steps.mode.outputs.run_mode != 'LOOP_CLOSURE'
+        env:
+          TARGET_BRANCH: ${{ vars.TELEMETRY_BRANCH || (github.repository == 'kreier/roundtrip' && 'telemetry-origin' || 'telemetry') }}
+        run: |
+          if [ "${{ steps.mode.outputs.run_mode }}" = "INITIATOR_START" ]; then
+            ACTIVE_ROUND_ID="${{ steps.init_meta.outputs.round_id }}"
+          else
+            ACTIVE_ROUND_ID="${{ steps.parse_relay.outputs.round_id }}"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp data/runs.json /tmp/runs_hop.json
+          git checkout ${TARGET_BRANCH} 2>/dev/null || git checkout --orphan ${TARGET_BRANCH}
+          git rm -rf . 2>/dev/null || true
+          mkdir -p data
+          cp /tmp/runs_hop.json data/runs.json
+          git add data/runs.json
+          git commit -m "chore(telemetry): record hop for round ${ACTIVE_ROUND_ID} [skip ci]" || echo "No changes"
+          git push origin ${TARGET_BRANCH} || echo "Push to ${TARGET_BRANCH} branch skipped"

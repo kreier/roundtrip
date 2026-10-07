@@ -34,8 +34,8 @@
 ## Quick Reference
 
 ### Station Roles
-- **Initiator (`kreier/roundtrip`)**: Manages the monthly schedule, measures initial cron jitter, initiates the cycle, and schedules the subsequent month.
-- **Relay Stations (Forks)**: Run workflows on `repository_dispatch`, reconstruct the prior round, deploy Pages, and dispatch the next station.
+- **Peer Ring Nodes**: Any station can initiate a benchmark run on-demand (`MANUAL` or `TEST`), and stations with `CRON_ENABLED=true` run automated scheduled cycles.
+- **Loop Sealing**: Whichever station initiated a given cycle seals the metrics and closes the loop when the return signal arrives.
 
 ### Authentication
 Inter-station triggering uses a shared **GitHub App** installed on each station's repository, generating short-lived installation access tokens without personal access tokens (PATs).

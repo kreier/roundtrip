@@ -29,10 +29,9 @@ GitHub Actions natively provides **Repository Variables** (under `Settings > Sec
 | Variable Name | Type | Example Value | Description |
 |---|---|---|---|
 | `STATION_ID` | String | `kreier-sg-01` | Unique human-readable name of this station. |
-| `IS_INITIATOR` | Boolean | `false` (or `true` on Station 0) | Declares if this station initiates the monthly cron loop. |
+| `CRON_ENABLED` | Boolean (String) | `false` | Master switch for scheduled monthly cron runs (defaults to `false` on forks). |
 | `NEXT_STATION_REPO` | String | `offspring26/roundtrip` | Target GitHub repository (`owner/repo`) for the next hop. |
 | `EXPECTED_PREVIOUS_STATION` | String | `kreier-station-0` | Upstream station identifier expected to trigger this node. |
-| `INITIATOR_REPO` | String | `kreier/roundtrip` | Repository of the roundtrip initiator. |
 
 ### Strategy 2: Untracked Local Configuration File (For Local Testing)
 For local development and testing, configurations can be placed in `.roundtrip/config.json`.

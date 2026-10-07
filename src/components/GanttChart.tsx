@@ -6,9 +6,14 @@ export type { StationStep };
 interface GanttChartProps {
   stations: StationStep[];
   cronJitterMs?: number;
+  triggerType?: string;
 }
 
-export const GanttChart: React.FC<GanttChartProps> = ({ stations, cronJitterMs = 0 }) => {
+export const GanttChart: React.FC<GanttChartProps> = ({
+  stations,
+  cronJitterMs = 0,
+  triggerType = 'CRON',
+}) => {
   if (!stations || stations.length === 0) {
     return (
       <div className="p-8 text-center text-slate-400 bg-slate-900/50 rounded-xl border border-slate-800">
@@ -79,7 +84,9 @@ export const GanttChart: React.FC<GanttChartProps> = ({ stations, cronJitterMs =
         <div className="flex flex-wrap items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-amber-500"></span>
-            <span className="text-slate-300">Jitter / Queue Delay</span>
+            <span className="text-slate-300">
+              {triggerType === 'CRON' ? 'Cron Jitter' : 'Runner Queue Delay'}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-sky-500"></span>

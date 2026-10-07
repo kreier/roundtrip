@@ -12,17 +12,31 @@ import os
 import re
 import sys
 
-WORKFLOW_PATH = os.path.join(
+UNIFIED_WORKFLOW_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    ".github",
+    "workflows",
+    "roundtrip.yml",
+)
+LEGACY_WORKFLOW_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     ".github",
     "workflows",
     "roundtrip-initiator.yml",
 )
+WORKFLOW_PATH = UNIFIED_WORKFLOW_PATH if os.path.exists(UNIFIED_WORKFLOW_PATH) else LEGACY_WORKFLOW_PATH
 
 
-def compute_next_schedule(current_date: datetime.date = None):
+def compute_next_schedule(current_date: datetime.date = None, target_time: str = None):
     if current_date is None:
         current_date = datetime.date.today()
+
+    target_time_str = target_time or os.getenv("CRON_TARGET_TIME", "03:14")
+    try:
+        hour_str, min_str = target_time_str.split(":", 1)
+        sched_hour, sched_min = int(hour_str), int(min_str)
+    except Exception:
+        sched_hour, sched_min = 3, 14
 
     # Advance to the subsequent calendar month
     if current_date.month == 12:
@@ -49,13 +63,15 @@ def compute_next_schedule(current_date: datetime.date = None):
         if next_day > max_feb:
             next_day = rnd.randint(1, max_feb)
 
-    cron_expression = f"14 3 {next_day} {next_month} *"
-    target_date_iso = f"{next_year:04d}-{next_month:02d}-{next_day:02d}T03:14:00Z"
+    cron_expression = f"{sched_min} {sched_hour} {next_day} {next_month} *"
+    target_date_iso = f"{next_year:04d}-{next_month:02d}-{next_day:02d}T{sched_hour:02d}:{sched_min:02d}:00Z"
 
     return {
         "day": next_day,
         "month": next_month,
         "year": next_year,
+        "hour": sched_hour,
+        "minute": sched_min,
         "cron_expression": cron_expression,
         "target_date_iso": target_date_iso,
     }
@@ -85,9 +101,10 @@ def update_initiator_workflow(cron_expression: str, workflow_file: str = WORKFLO
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Calculate next month's random 03:14 UTC roundtrip schedule")
-    parser.add_argument("--update-workflow", action="store_true", help="Update the cron schedule in roundtrip-initiator.yml")
-    parser.add_argument("--workflow-path", default=WORKFLOW_PATH, help="Path to initiator workflow YAML")
+    parser = argparse.ArgumentParser(description="Calculate next month's roundtrip schedule")
+    parser.add_argument("--update-workflow", action="store_true", help="Update the cron schedule in roundtrip workflow YAML")
+    parser.add_argument("--workflow-path", default=WORKFLOW_PATH, help="Path to workflow YAML")
+    parser.add_argument("--target-time", default=os.getenv("CRON_TARGET_TIME", "03:14"), help="Target UTC time in HH:MM (default: 03:14)")
     parser.add_argument("--json", action="store_true", help="Output JSON payload")
     parser.add_argument("--date", help="Simulate execution from ISO date (YYYY-MM-DD)")
 
@@ -97,7 +114,7 @@ def main():
     if args.date:
         ref_date = datetime.date.fromisoformat(args.date)
 
-    schedule = compute_next_schedule(ref_date)
+    schedule = compute_next_schedule(ref_date, target_time=args.target_time)
 
     if args.update_workflow:
         update_initiator_workflow(schedule["cron_expression"], args.workflow_path)

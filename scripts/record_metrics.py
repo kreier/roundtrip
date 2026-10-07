@@ -61,6 +61,19 @@ def load_database(filepath: str) -> dict:
     }
 
 
+def infer_trigger_type(round_id: str, explicit_type: str = None) -> str:
+    if explicit_type and explicit_type.upper() in ("CRON", "MANUAL", "TEST"):
+        return explicit_type.upper()
+    rid_upper = (round_id or "").upper()
+    if "TEST" in rid_upper:
+        return "TEST"
+    if "MANUAL" in rid_upper:
+        return "MANUAL"
+    if "CRON" in rid_upper:
+        return "CRON"
+    return "CRON"
+
+
 def record_station_run(
     data_path: str,
     round_id: str,
@@ -75,9 +88,16 @@ def record_station_run(
     scheduled_time: str = None,
     incoming_payload: dict = None,
     is_loop_closure: bool = False,
+    trigger_type: str = None,
 ):
     db = load_database(data_path)
     db["station_id"] = station_id
+
+    resolved_type = infer_trigger_type(
+        round_id,
+        trigger_type
+        or (incoming_payload.get("initiator", {}).get("trigger_type") if incoming_payload else None),
+    )
 
     # Find existing run or create new
     run = None
@@ -90,11 +110,14 @@ def record_station_run(
         # Construct initiator block
         if incoming_payload and incoming_payload.get("initiator"):
             initiator_info = incoming_payload["initiator"]
+            if "trigger_type" not in initiator_info:
+                initiator_info["trigger_type"] = resolved_type
         elif is_initiator:
             jitter = delta_ms(scheduled_time, workflow_started_at) if scheduled_time else 0
             initiator_info = {
                 "station_id": station_id,
                 "repo": repo,
+                "trigger_type": resolved_type,
                 "scheduled_time_utc": scheduled_time or workflow_started_at,
                 "actual_start_utc": workflow_started_at,
                 "cron_jitter_ms": jitter,
@@ -103,6 +126,7 @@ def record_station_run(
             initiator_info = {
                 "station_id": "unknown",
                 "repo": "unknown",
+                "trigger_type": resolved_type,
                 "scheduled_time_utc": None,
                 "actual_start_utc": None,
                 "cron_jitter_ms": 0,
@@ -110,6 +134,7 @@ def record_station_run(
 
         run = {
             "round_id": round_id,
+            "trigger_type": resolved_type,
             "status": "IN_PROGRESS",
             "initiator": initiator_info,
             "summary": {
@@ -120,6 +145,9 @@ def record_station_run(
             "stations": [],
         }
         db["runs"].append(run)
+    else:
+        if "trigger_type" not in run:
+            run["trigger_type"] = resolved_type
 
     # Copy previous trace stations if available from incoming payload
     if incoming_payload and "trace" in incoming_payload:
@@ -211,6 +239,7 @@ def main():
     parser.add_argument("--dispatched-next-at")
     parser.add_argument("--scheduled-time")
     parser.add_argument("--incoming-payload-file")
+    parser.add_argument("--trigger-type", choices=["CRON", "MANUAL", "TEST"], help="Execution trigger category")
 
     args = parser.parse_args()
 
@@ -237,6 +266,7 @@ def main():
         scheduled_time=args.scheduled_time,
         incoming_payload=incoming_payload,
         is_loop_closure=args.is_loop_closure,
+        trigger_type=args.trigger_type,
     )
 
 

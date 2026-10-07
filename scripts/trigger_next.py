@@ -219,6 +219,15 @@ def main():
             "cron_jitter_ms": 0,
         }
 
+    if "trigger_type" not in initiator_info:
+        rid = (args.round_id or "").upper()
+        if "TEST" in rid:
+            initiator_info["trigger_type"] = "TEST"
+        elif "MANUAL" in rid:
+            initiator_info["trigger_type"] = "MANUAL"
+        else:
+            initiator_info["trigger_type"] = "CRON"
+
     payload["initiator"] = initiator_info
 
     # Append current station's hop record to trace

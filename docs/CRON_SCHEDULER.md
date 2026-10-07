@@ -34,7 +34,7 @@ flowchart TD
     Seal --> Rand[Generate random day D in 1..30]
     Rand --> CalcNext[Compute Next Month & Year]
     CalcNext --> FormatCron[Generate cron: 14 3 D M *]
-    FormatCron --> UpdateFile[Update .github/workflows/roundtrip-initiator.yml]
+    FormatCron --> UpdateFile[Update .github/workflows/roundtrip.yml]
     UpdateFile --> Commit[Commit & Push Schedule Update]
     Commit --> Done[Ready for next month at 03:14 UTC]
 ```
@@ -45,7 +45,7 @@ import datetime
 import random
 import re
 
-def compute_next_schedule(current_date: datetime.date = None):
+def compute_next_schedule(current_date: datetime.date = None, target_time: str = None):
     today = current_date or datetime.date.today()
     # Advance to next month
     if today.month == 12:
@@ -62,8 +62,8 @@ def compute_next_schedule(current_date: datetime.date = None):
 ```
 
 ### Workflow File Update Mechanism
-The initiator workflow uses a dedicated step to update `.github/workflows/roundtrip-initiator.yml`:
-1. Replaces the cron line in `roundtrip-initiator.yml`.
+The roundtrip workflow uses a dedicated step to update `.github/workflows/roundtrip.yml`:
+1. Replaces the cron line in `roundtrip.yml`.
 2. Commits the change with message:
    `chore(schedule): set next roundtrip start to YYYY-MM-DD at 03:14 UTC`.
 3. Pushes to `main`.

@@ -53,9 +53,7 @@ Agents should maintain and organize code according to the following layout:
 roundtrip/
 ├── .github/
 │   ├── workflows/
-│   │   ├── roundtrip-initiator.yml  # Monthly cron trigger (Station 0 only)
-│   │   ├── roundtrip-relay.yml      # repository_dispatch receiver for all stations
-│   │   └── deploy-pages.yml         # GitHub Pages Vite build & deploy
+│   │   └── roundtrip.yml            # Unified peer workflow: cron, manual & relay
 ├── docs/                            # Architectural and technical documentation
 │   ├── ARCHITECTURE.md              # System design, ring lifecycle & failure modes
 │   ├── STATION_CONFIG.md            # Configuration, sync safety & station roles

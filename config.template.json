@@ -4,7 +4,7 @@
     "id": "station-template",
     "name": "Station Template",
     "location": "UTC",
-    "is_initiator": false
+    "cron_enabled": false
   },
   "routing": {
     "initiator_repo": "kreier/roundtrip",
